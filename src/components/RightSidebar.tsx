@@ -33,7 +33,7 @@ export default function OrderConfirmation({ order, onStartNewOrder, formatPrice 
             </svg>
           </div>
           <h1 className="text-3xl font-bold mb-2">Order Confirmed!</h1>
-          <p className="text-pink-100">Thank you for your order. We're preparing your delicious meal!</p>
+          <p className="text-pink-100">Thank you for your order. We&apos;re preparing your delicious meal!</p>
         </div>
 
         {/* Order Details */}

@@ -10,6 +10,7 @@ interface ChatUIProps {
 interface ChatMessage {
   sender: "user" | "assistant" | "system";
   text: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
   timestamp: Date;
 }
@@ -73,6 +74,7 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const addToChatHistory = (sender: ChatMessage["sender"], text: string, data: any = null) => {
     setChatHistory(prev => [...prev, { sender, text, data, timestamp: new Date() }]);
   };

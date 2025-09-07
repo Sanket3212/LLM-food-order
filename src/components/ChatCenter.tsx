@@ -25,7 +25,7 @@ export default function ChatCenter({ chatHistory, message, setMessage, loading, 
           <div className="text-center text-neutral-gray mt-20">
             <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-blue-dark" />
             <p>Start chatting to place your order!</p>
-            <p className="text-sm mt-2">Try: "I want a chicken sandwich and fries"</p>
+            <p className="text-sm mt-2">Try: &quot;I want a chicken sandwich and fries&quot;</p>
           </div>
         ) : (
           chatHistory.map((chat, index) => (

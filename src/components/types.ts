@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // types.ts
 export type ChatMessage = {
   sender: 'user' | 'assistant' | 'system';
