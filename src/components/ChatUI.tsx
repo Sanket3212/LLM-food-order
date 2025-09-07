@@ -169,15 +169,15 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
   return (
     <div className="flex-1 flex flex-col h-full">
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h2 className="text-2xl font-bold">Food Order Chat</h2>
+        <h2 className="text-2xl font-bold text-black">Food Order Chat</h2>
         {cart.length > 0 && !orderConfirmed && (
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-black">
               Cart: {cart.length} items | Total: ${total.toFixed(2)}
             </span>
             <button
               onClick={clearCart}
-              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-black"
             >
               Clear Cart
             </button>
@@ -229,7 +229,7 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyPress}
-          className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+          className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-black"
           placeholder="Type 'menu' to see options, or tell me what you'd like..."
           rows={2}
           disabled={loading || orderConfirmed}
@@ -237,7 +237,7 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
         <button
           onClick={processOrder}
           disabled={loading || !message.trim() || orderConfirmed}
-          className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-black"
         >
           {loading ? (
             <div className="flex gap-1">
@@ -253,22 +253,22 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
       
       {/* Quick action buttons */}
       <div className="flex gap-2 mt-2 flex-shrink-0">
-        <button
+        {/* <button
           onClick={() => setMessage("Show me the menu")}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full transition-colors text-black"
         >
           📋 Menu
         </button>
         <button
           onClick={() => setMessage("What's in my cart?")}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full transition-colors text-black"
         >
           🛒 View Cart
-        </button>
+        </button> */}
         {cart.length > 0 && (
           <button
             onClick={() => setMessage("I want to checkout")}
-            className="px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-full transition-colors"
+            className="px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-full transition-colors text-black"
           >
             ✅ Checkout
           </button>

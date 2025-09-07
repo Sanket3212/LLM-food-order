@@ -23,7 +23,7 @@ export default function ProfileCard() {
     <div className="w-80 flex-shrink-0">
       <div className="bg-pink-600 rounded-2xl border-4 border-black p-6 flex flex-col items-center shadow-xl">
         <div className="bg-white px-4 py-2 rounded-lg border-2 border-black -mt-10 mb-4 shadow-md">
-          <h1 className="text-xl font-bold">{session.user?.name}</h1>
+          <h1 className="text-xl font-bold text-black">{session.user?.name}</h1>
         </div>
         {session.user?.image && (
           <Image
