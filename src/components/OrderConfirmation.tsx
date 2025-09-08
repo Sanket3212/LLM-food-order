@@ -90,9 +90,9 @@ export default function OrderConfirmation({
         {/* Contact Info */}
         <div className="text-center text-xs text-gray-500 p-3 flex-shrink-0">
           <span>Need help? </span>
-          <span className="font-medium text-pink-600">support@foodchat.com</span>
+          <span className="font-medium text-pink-600">ssk.goa12@gmail.com</span>
           <div className="mt-1">
-            <span className="font-medium text-pink-600">(555) 123-4567</span>
+            <span className="font-medium text-pink-600">(+91) 9075456905</span>
           </div>
         </div>
       </div>
