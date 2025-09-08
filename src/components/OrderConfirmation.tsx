@@ -2,6 +2,7 @@
 "use client";
 import { useState } from "react";
 import { CartItem } from "./types";
+import { span } from "framer-motion/client";
 
 interface OrderConfirmationProps {
   order: {
@@ -68,10 +69,6 @@ export default function OrderConfirmation({
 
         {/* Totals */}
         <div className="p-4 bg-gray-50 flex-shrink-0">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Subtotal:</span>
-            <span>{formatPrice(calculateSubtotal())}</span>
-          </div>
           <div className="flex justify-between items-center pt-2 border-t border-gray-200">
             <span className="text-lg font-bold text-gray-800">Total:</span>
             <span className="text-xl font-bold text-pink-600">

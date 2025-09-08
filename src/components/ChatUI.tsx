@@ -349,10 +349,7 @@ Customer: Walk-in Customer`;
         )}
       </div>
       
-      {/* MantisBT Configuration Status */}
-      <div className="mb-2 text-xs text-gray-600">
-        MantisBT: {MANTIS_CONFIG.url} (Project: {MANTIS_CONFIG.projectId})
-      </div>
+
       
       {/* Chat container with proper scrolling */}
       <div className="flex-1 border rounded-lg bg-gray-50 overflow-hidden flex flex-col min-h-0">
@@ -399,7 +396,7 @@ Customer: Walk-in Customer`;
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyPress}
           className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-black"
-          placeholder={backendConnected ? "Type 'menu' to see options" : "Backend disconnected..."}
+          placeholder={backendConnected ? "Type 'menu' to see options, " : "Backend disconnected..."}
           rows={2}
           disabled={loading || orderConfirmed || !backendConnected}
         />
