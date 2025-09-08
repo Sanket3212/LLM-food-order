@@ -16,30 +16,43 @@ interface ChatMessage {
 }
 
 interface MenuItem {
-  id: number;
   name: string;
   price: number;
-  category: string;
-  available: boolean;
+  description: string;
+  aliases?: string[];
 }
 
 const API_BASE = 'https://backend-llm-production-afb7.up.railway.app';
 
+// MantisBT Configuration - Update these with your actual values
+const MANTIS_CONFIG = {
+  url: 'https://sanketkumbhar.mantishub.io',
+  apiKey: 'hQNZgJjCafmXDAXCBuIrBz0cQInVvTYz',
+  projectId: 1 // Update this with your actual project ID
+};
+
 export default function ChatUI({ onConfirm }: ChatUIProps) {
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-    { sender: "assistant", text: "Welcome! What would you like to order today? Type 'menu' to see our options or just tell me what you'd like!", timestamp: new Date() },
+    { 
+      sender: "assistant", 
+      text: "Welcome! What would you like to order today? Type 'menu' to see our options or just tell me what you'd like!", 
+      timestamp: new Date() 
+    },
   ]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
+  const [backendConnected, setBackendConnected] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string>('');
 
   // Ref for auto-scrolling to bottom
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    checkBackendConnection();
     fetchMenu();
     fetchCart();
   }, []);
@@ -53,24 +66,137 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const checkBackendConnection = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setBackendConnected(data.status === 'healthy');
+        console.log('Backend health:', data);
+      } else {
+        setBackendConnected(false);
+        console.error('Backend health check failed:', response.status);
+      }
+    } catch (error) {
+      setBackendConnected(false);
+      console.error('Backend connection failed:', error);
+      addToChatHistory('system', 'Warning: Unable to connect to backend. Some features may not work.');
+    }
+  };
+
   const fetchMenu = async () => {
     try {
-      const response = await fetch(`${API_BASE}/menu`);
-      const data = await response.json();
-      setMenu(data.menu || []);
+      const response = await fetch(`${API_BASE}/menu`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMenu(data.menu || []);
+        console.log('Menu loaded:', data.menu);
+      } else {
+        console.error('Failed to fetch menu:', response.status);
+        throw new Error('Menu fetch failed');
+      }
     } catch (error) {
+      console.error('Menu fetch error:', error);
       addToChatHistory('system', 'Failed to load menu. Please check your connection.');
     }
   };
 
   const fetchCart = async () => {
     try {
-      const response = await fetch(`${API_BASE}/cart`);
-      const data = await response.json();
-      setCart(data.items || []);
-      setTotal(data.total || 0);
+      const response = await fetch(`${API_BASE}/cart`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCart(data.items || []);
+        setTotal(data.total || 0);
+        console.log('Cart loaded:', data);
+      }
     } catch (error) {
+      console.error('Cart fetch error:', error);
       // Silent fail for initial cart fetch
+    }
+  };
+
+  // Generate order number
+  const generateOrderNumber = () => {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    return `ORD-${timestamp}-${random}`;
+  };
+
+  // Create MantisBT ticket for the order
+  const createOrderTicket = async (orderNum: string, cartItems: CartItem[], orderTotal: number) => {
+    try {
+      // Create order description
+      const orderItems = cartItems.map(item => 
+        `• ${item.qty}x ${item.name} - $${item.price.toFixed(2)} each = $${(item.qty * item.price).toFixed(2)}`
+      ).join('\n');
+
+      const description = `Order Details:
+${orderItems}
+
+Total Amount: $${orderTotal.toFixed(2)}
+Order Date: ${new Date().toLocaleString()}
+Customer: Walk-in Customer`;
+
+      // Create tags with pricing info
+      const tags = `order,food,total-${orderTotal.toFixed(2)}`;
+
+      const payload = {
+        summary: `Food Order - ${orderNum}`,
+        description: description,
+        category: { name: 'General' },
+        project: {
+          id: MANTIS_CONFIG.projectId
+        },
+        tags: tags
+      };
+
+      console.log('Creating MantisBT ticket:', payload);
+
+      const response = await fetch(`${MANTIS_CONFIG.url}/api/rest/issues`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': MANTIS_CONFIG.apiKey,
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const issueId = data.issue.id;
+        console.log('MantisBT ticket created successfully:', issueId);
+        addToChatHistory('system', `✅ Order ticket created successfully! Ticket ID: ${issueId}`);
+        return issueId;
+      } else {
+        const errorMessage = data.message || 'Failed to create ticket';
+        console.error('MantisBT API Error:', data);
+        addToChatHistory('system', `⚠️ Failed to create order ticket: ${errorMessage}`);
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error creating MantisBT ticket:', error);
+      addToChatHistory('system', `❌ Error creating order ticket: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
   };
 
@@ -81,80 +207,114 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
 
   const processOrder = async () => {
     if (!message.trim()) return;
+    
+    if (!backendConnected) {
+      addToChatHistory('system', 'Backend is not available. Please try again later.');
+      return;
+    }
+
     setLoading(true);
     addToChatHistory('user', message);
+    
+    const userMessage = message.trim();
+    setMessage(''); // Clear input immediately
 
     try {
+      console.log('Sending to backend:', userMessage);
+      
       const response = await fetch(`${API_BASE}/process-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage }),
       });
 
+      console.log('Backend response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error response:', errorText);
+        throw new Error(`Backend error: ${response.status} - ${errorText}`);
+      }
+
       const data = await response.json();
-      if (response.ok) {
-        setCart(data.items || []);
+      console.log('Backend response data:', data);
+
+      // Update cart state from backend response
+      if (data.cart) {
+        setCart(data.cart);
         setTotal(data.total || 0);
-        
-        let responseMessage = data.message || "I've updated your order!";
-        
-        // Handle different intents
-        if (data.intent === 'ask_menu') {
-          responseMessage = "Here's our menu! You can order by saying things like 'I want 2 chicken sandwiches' or 'Add a burger to my cart'";
-          // Display menu items in chat
-          if (menu.length > 0) {
-            const menuText = menu
-              .filter(item => item.available)
-              .map(item => `• ${item.name} - $${item.price.toFixed(2)}`)
-              .join('\n');
-            responseMessage += '\n\n' + menuText;
-          }
-        } else if (data.intent === 'add_item') {
-          responseMessage = `Great! I've added ${data.message} to your cart. Your total is now $${data.total.toFixed(2)}. Would you like anything else?`;
-        } else if (data.intent === 'remove_item') {
-          responseMessage = `I've removed that from your cart. Your total is now $${data.total.toFixed(2)}.`;
-        } else if (data.intent === 'view_cart') {
-          if (cart.length > 0) {
-            const cartText = data.items.map((item: CartItem) => 
-              `• ${item.qty}x ${item.name} - $${(item.price * item.qty).toFixed(2)}`
-            ).join('\n');
-            responseMessage = `Here's your current cart:\n${cartText}\n\nTotal: $${data.total.toFixed(2)}`;
-          } else {
-            responseMessage = "Your cart is empty. What would you like to order?";
-          }
-        } else if (data.intent === 'checkout' || message.toLowerCase().includes('confirm')) {
-          if (cart.length > 0) {
-            responseMessage = `Perfect! Your order total is $${data.total.toFixed(2)}. I'm confirming your order now...`;
-            setTimeout(() => {
+      } else if (data.items) {
+        setCart(data.items);
+        setTotal(data.total || 0);
+      }
+
+      // Use the backend's message directly - don't override it
+      let responseMessage = data.message || "I've processed your request!";
+      
+      // Only enhance specific intents, don't override the backend message
+      if (data.intent === 'ask_menu' && data.menu) {
+        const menuText = data.menu
+          .map((item: MenuItem) => `• ${item.name} - $${item.price.toFixed(2)} - ${item.description}`)
+          .join('\n');
+        responseMessage += '\n\n' + menuText;
+      } else if (data.intent === 'view_cart' && data.cart && data.cart.length > 0) {
+        const cartText = data.cart.map((item: CartItem) => 
+          `• ${item.qty}x ${item.name} - $${item.price.toFixed(2)}`
+        ).join('\n');
+        responseMessage += `\n\n${cartText}`;
+      } else if (data.intent === 'finalize_order') {
+        if (data.order_summary) {
+          const newOrderNumber = generateOrderNumber();
+          setOrderNumber(newOrderNumber);
+          
+          responseMessage = `Order confirmed! ${data.message}\nOrder Number: ${newOrderNumber}`;
+          
+          // Create MantisBT ticket asynchronously
+          setTimeout(async () => {
+            try {
+              await createOrderTicket(newOrderNumber, cart, total);
               onConfirm(cart, total);
               setOrderConfirmed(true);
-            }, 1500);
-          } else {
-            responseMessage = "Your cart is empty. Please add some items before checking out.";
-          }
+            } catch (error) {
+              console.error('Failed to create ticket, but order is still confirmed');
+              onConfirm(cart, total);
+              setOrderConfirmed(true);
+            }
+          }, 1500);
         }
-        
-        addToChatHistory('assistant', responseMessage, data);
-      } else {
-        addToChatHistory('system', `Error: ${data.error || 'Failed to process your order'}`);
       }
+      
+      addToChatHistory('assistant', responseMessage, data);
+
     } catch (error) {
-      addToChatHistory('system', 'Failed to process order. Please try again.');
+      console.error('Order processing error:', error);
+      addToChatHistory('system', `Failed to process order: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
-      setMessage('');
     }
   };
 
   const clearCart = async () => {
     try {
-      const response = await fetch(`${API_BASE}/cart/clear`, { method: 'POST' });
+      const response = await fetch(`${API_BASE}/cart/clear`, { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
       if (response.ok) {
         setCart([]);
         setTotal(0);
         addToChatHistory('system', 'Cart cleared successfully!');
+      } else {
+        throw new Error('Failed to clear cart');
       }
     } catch (error) {
+      console.error('Clear cart error:', error);
       addToChatHistory('system', 'Failed to clear cart.');
     }
   };
@@ -169,20 +329,29 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
   return (
     <div className="flex-1 flex flex-col h-full">
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h2 className="text-2xl font-bold text-black">Food Order Chat</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-black">Food Order Chat</h2>
+          <div className={`w-2 h-2 rounded-full ${backendConnected ? 'bg-green-500' : 'bg-red-500'}`} 
+               title={backendConnected ? 'Connected' : 'Disconnected'} />
+        </div>
         {cart.length > 0 && !orderConfirmed && (
           <div className="flex items-center gap-4">
             <span className="text-sm text-black">
               Cart: {cart.length} items | Total: ${total.toFixed(2)}
             </span>
-            <button
-              onClick={clearCart}
-              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-black"
-            >
-              Clear Cart
-            </button>
+            
           </div>
         )}
+        {orderNumber && (
+          <div className="text-sm font-medium text-green-600">
+            Order: {orderNumber}
+          </div>
+        )}
+      </div>
+      
+      {/* MantisBT Configuration Status */}
+      <div className="mb-2 text-xs text-gray-600">
+        MantisBT: {MANTIS_CONFIG.url} (Project: {MANTIS_CONFIG.projectId})
       </div>
       
       {/* Chat container with proper scrolling */}
@@ -198,12 +367,12 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
                   : "bg-gray-200 text-black"
               }`}>
                 <div className="whitespace-pre-wrap break-words">{msg.text}</div>
-                {msg.sender === "assistant" && loading && idx === chatHistory.length - 1 && (
-                  <div className="flex gap-1 mt-2">
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  </div>
+                {/* Show debug info in development */}
+                {process.env.NODE_ENV === 'development' && msg.data && (
+                  <details className="mt-2 text-xs opacity-70">
+                    <summary>Debug Info</summary>
+                    <pre className="mt-1 text-xs">{JSON.stringify(msg.data, null, 2)}</pre>
+                  </details>
                 )}
               </div>
             </div>
@@ -230,14 +399,14 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyPress}
           className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-black"
-          placeholder="Type 'menu' to see options, or tell me what you'd like..."
+          placeholder={backendConnected ? "Type 'menu' to see options" : "Backend disconnected..."}
           rows={2}
-          disabled={loading || orderConfirmed}
+          disabled={loading || orderConfirmed || !backendConnected}
         />
         <button
           onClick={processOrder}
-          disabled={loading || !message.trim() || orderConfirmed}
-          className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-black"
+          disabled={loading || !message.trim() || orderConfirmed || !backendConnected}
+          className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (
             <div className="flex gap-1">
@@ -253,24 +422,27 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
       
       {/* Quick action buttons */}
       <div className="flex gap-2 mt-2 flex-shrink-0">
-        {/* <button
+        <button
           onClick={() => setMessage("Show me the menu")}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full transition-colors text-black"
+          disabled={!backendConnected}
+          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 disabled:bg-gray-300 rounded-full transition-colors text-black"
         >
           📋 Menu
         </button>
         <button
           onClick={() => setMessage("What's in my cart?")}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full transition-colors text-black"
+          disabled={!backendConnected}
+          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 disabled:bg-gray-300 rounded-full transition-colors text-black"
         >
           🛒 View Cart
-        </button> */}
+        </button>
         {cart.length > 0 && (
           <button
-            onClick={() => setMessage("I want to checkout")}
-            className="px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-full transition-colors text-black"
+            onClick={() => setMessage("I want to finalize my order")}
+            disabled={!backendConnected}
+            className="px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-700 disabled:bg-gray-300 rounded-full transition-colors"
           >
-            ✅ Checkout
+            ✅ Finalize Order
           </button>
         )}
       </div>

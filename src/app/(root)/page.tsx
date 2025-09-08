@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import ProfileCard from "@/components/ProfileCard";
 import ChatUI from "@/components/ChatUI";
 import OrderConfirmation from "@/components/OrderConfirmation";
-import { div } from "framer-motion/client";
+import Image from "next/image";
 
 // Define the CartItem type to match your ChatUI component
 interface CartItem {
@@ -20,6 +20,15 @@ export default function Home() {
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderDetails, setOrderDetails] = useState<{ items: CartItem[]; total: number } | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect screen size
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -38,7 +47,6 @@ export default function Home() {
 
   const formatPrice = (price: number) => `$${price.toFixed(2)}`;
 
-  // Show loading state while mounting or checking authentication
   if (!mounted || status === "loading") {
     return (
       <div className="h-screen bg-white flex flex-col">
@@ -60,68 +68,82 @@ export default function Home() {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      
       <Navbar />
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col md:flex-row p-6 gap-6 min-h-0">
-        {/* ProfileCard Section - Only show when user is signed in */}
-        {session && (
-          <div className="flex items-center justify-center md:w-80 md:flex-shrink-0">
-            <ProfileCard />
+      <main className="flex-1 flex flex-col md:flex-row p-4 md:p-6 gap-4 md:gap-6 min-h-0">
+        {!session ? (
+          // Landing page
+          <div className="flex-1 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-100 via-orange-100 to-transparent">
+            <div className="max-w-2xl text-center p-10">
+              <div className="text-7xl mb-6 flex justify-center">
+                <div className="w-50 h-50 rounded-full border-4 border-pink-600 overflow-hidden flex items-center justify-center bg-white shadow-lg">
+                  <Image
+                    src="/logo.png"   // 👈 use your chef logo path here
+                    alt="FoodChat Logo"
+                    className="object-cover w-full h-full"
+                    width={200}
+                    height={200}
+                  />
+                </div>
+              </div>
+
+              <h1 className="text-5xl font-extrabold mb-4 text-gray-800">
+                Food<span className="text-pink-600">Chat</span>
+              </h1>
+              <p className="text-lg text-gray-600 mb-10">
+                Your gateway to{" "}
+                <span className="text-pink-600 font-semibold">
+                  AI-powered food ordering
+                </span>
+                . Order meals effortlessly through natural conversation.
+              </p>
+            </div>
           </div>
-        )}
+        ) : (
+          <>
+            {/* Left Section */}
+            <div
+              className={`flex-shrink-0 transition-all duration-500 ease-in-out ${orderConfirmed ? "md:w-2/3 w-full" : "md:w-80 hidden md:flex md:items-center md:justify-center"
+                }`}
+            >
+              {!orderConfirmed ? (
+                <div className="flex items-center justify-center h-full">
+                  <ProfileCard />
+                </div>
+              ) : (
+                // Show ChatUI only on desktop when order confirmed
+                !isMobile && (
+                  <div className="h-full">
+                    <ChatUI onConfirm={handleOrderConfirm} />
+                  </div>
+                )
+              )}
+            </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {!session ? (
-            <div className="flex-1 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-100 via-orange-100 to-transparent">
-  <div className="max-w-2xl text-center p-10">
-    {/* Emoji Logo */}
-    <div className="text-7xl mb-6">🤖🍔</div>
-
-    {/* Title */}
-    <h1 className="text-5xl font-extrabold mb-4 text-gray-800">
-      Food<span className="text-pink-600">Chat</span>
-    </h1>
-
-    {/* Subtitle */}
-    <p className="text-lg text-gray-600 mb-10">
-      Your gateway to{" "}
-      <span className="text-pink-600 font-semibold">
-        AI-powered food ordering
-      </span>
-      . Order meals effortlessly through natural conversation.
-    </p>
-    
-  </div>
-</div>
-
-          ) : (
-            <div className="flex-1 flex flex-col min-h-0">
-              {/* Welcome Message for Logged In Users */}
-              
-
-              {/* Chat or Order Confirmation */}
-              <div className="flex-1 min-h-0">
-                {!orderConfirmed ? (
+            {/* Right Section */}
+            <div
+              className={`transition-all duration-500 ease-in-out ${orderConfirmed ? "md:w-1/3 w-full flex-shrink-0" : "flex-1 min-h-0 w-full"
+                }`}
+            >
+              {!orderConfirmed ? (
+                <div className="h-full">
                   <ChatUI onConfirm={handleOrderConfirm} />
-                ) : (
-                  orderDetails && (
-                    <OrderConfirmation 
+                </div>
+              ) : (
+                orderDetails && (
+                  <div className="h-full overflow-hidden">
+                    <OrderConfirmation
                       order={orderDetails}
                       onStartNewOrder={handleStartNewOrder}
                       formatPrice={formatPrice}
                     />
-                  )
-                )}
-              </div>
+                  </div>
+                )
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </main>
-
-    
     </div>
   );
 }
