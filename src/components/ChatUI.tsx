@@ -22,7 +22,7 @@ interface MenuItem {
   aliases?: string[];
 }
 
-const API_BASE = 'https://backend-llm-production-afb7.up.railway.app';
+const API_BASE =process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function ChatUI({ onConfirm }: ChatUIProps) {
   const [message, setMessage] = useState("");
