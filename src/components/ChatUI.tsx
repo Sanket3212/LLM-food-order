@@ -24,13 +24,6 @@ interface MenuItem {
 
 const API_BASE = 'https://backend-llm-production-afb7.up.railway.app';
 
-// MantisBT Configuration - Update these with your actual values
-const MANTIS_CONFIG = {
-  url: 'https://sanketkumbhar.mantishub.io',
-  apiKey: 'hQNZgJjCafmXDAXCBuIrBz0cQInVvTYz',
-  projectId: 1 // Update this with your actual project ID
-};
-
 export default function ChatUI({ onConfirm }: ChatUIProps) {
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
@@ -141,55 +134,41 @@ export default function ChatUI({ onConfirm }: ChatUIProps) {
     return `ORD-${timestamp}-${random}`;
   };
 
-  // Create MantisBT ticket for the order
+  // Create MantisBT ticket for the order using the secure API endpoint
   const createOrderTicket = async (orderNum: string, cartItems: CartItem[], orderTotal: number) => {
     try {
-      // Create order description
+      // Create order items string
       const orderItems = cartItems.map(item => 
         `• ${item.qty}x ${item.name} - $${item.price.toFixed(2)} each = $${(item.qty * item.price).toFixed(2)}`
       ).join('\n');
 
-      const description = `Order Details:
-${orderItems}
-
-Total Amount: $${orderTotal.toFixed(2)}
-Order Date: ${new Date().toLocaleString()}
-Customer: Walk-in Customer`;
-
-      // Create tags with pricing info
-      const tags = `order,food,total-${orderTotal.toFixed(2)}`;
-
-      const payload = {
-        summary: `Food Order - ${orderNum}`,
-        description: description,
-        category: { name: 'General' },
-        project: {
-          id: MANTIS_CONFIG.projectId
-        },
-        tags: tags
+      const orderData = {
+        orderNumber: orderNum,
+        items: orderItems,
+        total: orderTotal,
+        timestamp: new Date().toISOString()
       };
 
-      console.log('Creating MantisBT ticket:', payload);
+      console.log('Creating MantisBT ticket via API endpoint:', { orderNumber: orderNum, total: orderTotal });
 
-      const response = await fetch(`${MANTIS_CONFIG.url}/api/rest/issues`, {
+      const response = await fetch('/api/create-ticket', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': MANTIS_CONFIG.apiKey,
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(orderData)
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        const issueId = data.issue.id;
+        const issueId = data.issueId;
         console.log('MantisBT ticket created successfully:', issueId);
         addToChatHistory('system', `✅ Order ticket created successfully! Ticket ID: ${issueId}`);
         return issueId;
       } else {
-        const errorMessage = data.message || 'Failed to create ticket';
-        console.error('MantisBT API Error:', data);
+        const errorMessage = data.error || 'Failed to create ticket';
+        console.error('Ticket creation API Error:', data);
         addToChatHistory('system', `⚠️ Failed to create order ticket: ${errorMessage}`);
         throw new Error(errorMessage);
       }
@@ -364,13 +343,6 @@ Customer: Walk-in Customer`;
                   : "bg-gray-200 text-black"
               }`}>
                 <div className="whitespace-pre-wrap break-words">{msg.text}</div>
-                {/* Show debug info in development */}
-                {process.env.NODE_ENV === 'development' && msg.data && (
-                  <details className="mt-2 text-xs opacity-70">
-                    <summary>Debug Info</summary>
-                    <pre className="mt-1 text-xs">{JSON.stringify(msg.data, null, 2)}</pre>
-                  </details>
-                )}
               </div>
             </div>
           ))}

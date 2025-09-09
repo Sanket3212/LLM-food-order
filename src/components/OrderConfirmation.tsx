@@ -1,8 +1,8 @@
 // OrderConfirmation.tsx
 "use client";
-import { useState } from "react";
+
 import { CartItem } from "./types";
-import { span } from "framer-motion/client";
+
 
 interface OrderConfirmationProps {
   order: {
